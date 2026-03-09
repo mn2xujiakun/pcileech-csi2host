@@ -836,7 +836,7 @@ module pcileech_bar_impl_CSI2(
     input               rst,
     input               clk,
     // interrupt enable
-    output wire          int_enable,
+    output wire         int_enable,
     // incoming BAR writes:
     input [31:0]        wr_addr,
     input [3:0]         wr_be,
@@ -853,333 +853,130 @@ module pcileech_bar_impl_CSI2(
     output bit [31:0]   rd_rsp_data,
     output bit          rd_rsp_valid
 );
-
-    bit [87:0]      drd_req_ctx;
-    bit [31:0]      drd_req_addr;
-    bit [3:0]       drd_req_be;
-    bit             drd_req_valid;
-    
-    bit [3:0]       dwr_be;
-    bit [31:0]      dwr_addr;
-    bit [31:0]      dwr_data;
-    bit             dwr_valid;
-
-    bit [31:0]      data_32;
-
-    bit [31:0]      number = 32'h51;
-    bit [31:0]      random_number = 32'h49;
-    bit stop = 0;
-    logic toggle;
- 
-
-    always @ ( posedge clk ) begin
-        if (rst) begin
-            number <= 32'h51;
-            data_32 <= 0;
-            stop <= 1'b0;
-            random_number <= 32'h49;
+    function automatic [31:0] be_merge32(
+        input [31:0] oldv,
+        input [31:0] newv,
+        input [3:0]  be
+    );
+        begin
+            be_merge32 = {
+                be[3] ? newv[31:24] : oldv[31:24],
+                be[2] ? newv[23:16] : oldv[23:16],
+                be[1] ? newv[15:8]  : oldv[15:8],
+                be[0] ? newv[7:0]   : oldv[7:0]
+            };
         end
-        drd_req_ctx     <= rd_req_ctx;
-        drd_req_valid   <= rd_req_valid;
-        dwr_valid       <= wr_valid;
-        drd_req_addr    <= rd_req_addr;
-        drd_req_be      <= rd_req_be;
-        rd_rsp_ctx      <= drd_req_ctx;
-        rd_rsp_valid    <= drd_req_valid;
-        dwr_addr        <= wr_addr;
-        dwr_data        <= wr_data;
-        dwr_be         <= wr_be;
-        if (drd_req_valid) begin
-            case (({drd_req_addr[31:24], drd_req_addr[23:16], drd_req_addr[15:08], drd_req_addr[07:00]} - (base_address_register & 32'hFFFFFFF0)) & 32'hFFFF)
-                16'h0004: begin
-                    rd_rsp_data <= 32'hEEAB6897;
-                end
-                16'h0008: begin
-                    rd_rsp_data <= 32'h001E0000;
-                    stop <= 1'b1;
-                end
-                // 16'h0008 : rd_rsp_data <= 32'h001E0000;
-                16'h000C : rd_rsp_data <= 32'h101E0000;
-                16'h0010 : rd_rsp_data <= 32'h39060000;
-                16'h0014 : rd_rsp_data <= 32'h49240000;
-                16'h0018 : rd_rsp_data <= 32'h047B4000;
-                16'h001C : rd_rsp_data <= 32'h4D9F4000;
-                16'h0020 : rd_rsp_data <= 32'h00042000;
-                16'h0024 : rd_rsp_data <= 32'h4DA36000;
-                16'h0028 : rd_rsp_data <= 32'h044D9000;
-                16'h002C : rd_rsp_data <= 32'h51F0F000;
-                16'h0030 : rd_rsp_data <= 32'h0001D000;
-                16'h0034 : rd_rsp_data <= 32'h51F2C000;
-                16'h0038 : rd_rsp_data <= 32'h00011000;
-                16'h003C : rd_rsp_data <= 32'h51F3D000;
-                16'h0040 : rd_rsp_data <= 32'h0000E000;
-                16'h0044 : rd_rsp_data <= 32'h51F4B000;
-                16'h0048 : rd_rsp_data <= 32'h0001E000;
-                16'h004C : rd_rsp_data <= 32'h51F69000;
-                16'h0050 : rd_rsp_data <= 32'h00003000;
-                16'h0054 : rd_rsp_data <= 32'h51F6C000;
-                16'h0058 : rd_rsp_data <= 32'h00013000;
-                16'h005C : rd_rsp_data <= 32'h51F7F000;
-                16'h0060 : rd_rsp_data <= 32'h51F80000;
-                16'h0064 : rd_rsp_data <= 32'h51F91000;
-                16'h0068 : rd_rsp_data <= 32'h00009000;
-                16'h006C : rd_rsp_data <= 32'h51F9A000;
-                16'h0070 : rd_rsp_data <= 32'h00026000;
-                16'h0074 : rd_rsp_data <= 32'h51FC0000;
-                16'h0078 : rd_rsp_data <= 32'h51FDD000;
-                16'h007C : rd_rsp_data <= 32'h0005E000;
-                16'h0080 : rd_rsp_data <= 32'h5203B000;
-                16'h0084 : rd_rsp_data <= 32'h5203D000;
-                16'h0088 : rd_rsp_data <= 32'h00005000;
-                16'h008C : rd_rsp_data <= 32'h52042000;
-                16'h0090 : rd_rsp_data <= 32'h52044000;
-                16'h0094 : rd_rsp_data <= 32'h52049000;
-                16'h0098 : rd_rsp_data <= 32'h00004000;
-                16'h009C : rd_rsp_data <= 32'h5204D000;
-                16'h00A0 : rd_rsp_data <= 32'h00008000;
-                16'h00A4 : rd_rsp_data <= 32'h52055000;
-                16'h00A8 : rd_rsp_data <= 32'h52057000;
-                16'h00AC : rd_rsp_data <= 32'h00006000;
-                16'h00B0 : rd_rsp_data <= 32'h5205D000;
-                16'h00B4 : rd_rsp_data <= 32'h5205E000;
-                16'h00B8 : rd_rsp_data <= 32'h0002B000;
-                16'h00BC : rd_rsp_data <= 32'h52089000;
-                16'h00C0 : rd_rsp_data <= 32'h5208D000;
-                16'h00C4 : rd_rsp_data <= 32'h52095000;
-                16'h00C8 : rd_rsp_data <= 32'h5209A000;
-                16'h00CC : rd_rsp_data <= 32'h00080000;
-                16'h00D0 : rd_rsp_data <= 32'h5211A000;
-                16'h00D4 : rd_rsp_data <= 32'h00044000;
-                16'h00D8 : rd_rsp_data <= 32'h5215E000;
-                16'h00DC : rd_rsp_data <= 32'h0003E000;
-                16'h00E0 : rd_rsp_data <= 32'h5219C000;
-                16'h00E4 : rd_rsp_data <= 32'h5219E000;
-                16'h00E8 : rd_rsp_data <= 32'h521B0000;
-                16'h00EC : rd_rsp_data <= 32'h521CE000;
-                16'h00F0 : rd_rsp_data <= 32'h00156000;
-                16'h00F4 : rd_rsp_data <= 32'h52324000;
-                16'h00F8 : rd_rsp_data <= 32'h00007000;
-                16'h00FC : rd_rsp_data <= 32'h5232B000;
-                16'h0100 : rd_rsp_data <= 32'h0000B000;
-                16'h0104 : rd_rsp_data <= 32'h52336000;
-                16'h0108 : rd_rsp_data <= 32'h5233B000;
-                16'h010C : rd_rsp_data <= 32'h023DD000;
-                16'h0110 : rd_rsp_data <= 32'h54718000;
-                16'h0114 : rd_rsp_data <= 32'h00023000;
-                16'h0118 : rd_rsp_data <= 32'h5473B000;
-                16'h011C : rd_rsp_data <= 32'h5473D000;
-                16'h0120 : rd_rsp_data <= 32'h0000C000;
-                16'h0124 : rd_rsp_data <= 32'h54749000;
-                16'h0128 : rd_rsp_data <= 32'h54759000;
-                16'h012C : rd_rsp_data <= 32'h00900000;
-                16'h0130 : rd_rsp_data <= 32'h55059000;
-                16'h0134 : rd_rsp_data <= 32'h55060000;
-                16'h0138 : rd_rsp_data <= 32'h0000F000;
-                16'h013C : rd_rsp_data <= 32'h5506F000;
-                16'h0140 : rd_rsp_data <= 32'h003F3000;
-                16'h0144 : rd_rsp_data <= 32'h55462000;
-                16'h0148 : rd_rsp_data <= 32'h01A0D000;
-                16'h014C : rd_rsp_data <= 32'h56E6F000;
-                16'h0150 : rd_rsp_data <= 32'h003D0000;
-                16'h0154 : rd_rsp_data <= 32'h5723F000;
-                16'h0158 : rd_rsp_data <= 32'h00CD0000;
-                16'h015C : rd_rsp_data <= 32'h57F0F000;
-                16'h0160 : rd_rsp_data <= 32'h58F0F000;
-                16'h0164 : rd_rsp_data <= 32'h02FB0000;
-                16'h0168 : rd_rsp_data <= 32'h00000004;
-                16'h016C : rd_rsp_data <= 32'h5BEBF000;
-                16'h0170 : rd_rsp_data <= 32'h00140000;
-                16'h0174 : rd_rsp_data <= 32'h00000003;
-                16'h0178 : rd_rsp_data <= 32'h5BFFF000;
-                16'h017C : rd_rsp_data <= 32'h97800000;
-                16'h0180 : rd_rsp_data <= 32'h00000007;
-                16'h0184 : rd_rsp_data <= 32'h000A0000;
-                16'h0188 : rd_rsp_data <= 32'h00060000;
-                16'h018C : rd_rsp_data <= 32'h5C000000;
-                16'h0190 : rd_rsp_data <= 32'h04400000;
-                16'h0194 : rd_rsp_data <= 32'h60E00000;
-                16'h0198 : rd_rsp_data <= 32'h01200000;
-                16'h019C : rd_rsp_data <= 32'h62000000;
-                16'h01A0 : rd_rsp_data <= 32'h5BEFD228;
-                16'h01A4 : rd_rsp_data <= 32'h00000059;
-                16'h01A8 : rd_rsp_data <= 32'h00001000;
-                16'h01AC : rd_rsp_data <= 32'h00000001;
-                16'h01B0 : rd_rsp_data <= 32'h00002000;
-                16'h01B4 : rd_rsp_data <= 32'h00085000;
-                16'h01B8 : rd_rsp_data <= 32'h00087000;
-                16'h01BC : rd_rsp_data <= 32'h00088000;
-                16'h01C0 : rd_rsp_data <= 32'h00017000;
-                16'h01C4 : rd_rsp_data <= 32'h0009F000;
-                16'h01C8 : rd_rsp_data <= 32'h00000002;
-                16'h01CC : rd_rsp_data <= 32'h00100000;
-                16'h01D0 : rd_rsp_data <= 32'h00102000;
-                16'h01D4 : rd_rsp_data <= 32'h00103000;
-                16'h01D8 : rd_rsp_data <= 32'h00157000;
-                16'h01DC : rd_rsp_data <= 32'h0025A000;
-                16'h01E0 : rd_rsp_data <= 32'h0002D000;
-                16'h01E4 : rd_rsp_data <= 32'h00287000;
-                16'h01E8 : rd_rsp_data <= 32'h00288000;
-                16'h01EC : rd_rsp_data <= 32'h00289000;
-                16'h01F0 : rd_rsp_data <= 32'h00012000;
-                16'h01F4 : rd_rsp_data <= 32'h0029B000;
-                16'h01F8 : rd_rsp_data <= 32'h0029C000;
-                16'h01FC : rd_rsp_data <= 32'h00010000;
-                16'h0200 : rd_rsp_data <= 32'h002AC000;
-                16'h0204 : rd_rsp_data <= 32'h00022000;
-                16'h0208 : rd_rsp_data <= 32'h002CE000;
-                16'h020C : rd_rsp_data <= 32'h000CB000;
-                16'h0210 : rd_rsp_data <= 32'h00399000;
-                16'h0214 : rd_rsp_data <= 32'h00067000;
-                16'h0218 : rd_rsp_data <= 32'h00400000;
-                16'h021C : rd_rsp_data <= 32'h004C6000;
-                16'h0220 : rd_rsp_data <= 32'h008C6000;
-                16'h0224 : rd_rsp_data <= 32'h0015B000;
-                16'h0228 : rd_rsp_data <= 32'h00A21000;
-                16'h022C : rd_rsp_data <= 32'h00A21000;
-                16'h0230 : rd_rsp_data <= 32'h00A21000;
-                16'h0234 : rd_rsp_data <= 32'h00A21000;
-                16'h0238 : rd_rsp_data <= 32'h00A21000;
-                16'h023C : rd_rsp_data <= 32'h00A21000;
-                16'h0240 : rd_rsp_data <= 32'h00A21000;
-                16'h0244 : rd_rsp_data <= 32'h00A21000;
-                16'h0248 : rd_rsp_data <= 32'h00A21000;
-                16'h024C : rd_rsp_data <= 32'h00A21000;
-                16'h0250 : rd_rsp_data <= 32'h00A21000;
-                16'h0254 : rd_rsp_data <= 32'h00A21000;
-                16'h0258 : rd_rsp_data <= 32'h00A21000;
-                16'h025C : rd_rsp_data <= 32'h00A21000;
-                16'h0260 : rd_rsp_data <= 32'h00A21000;
-                16'h0264 : rd_rsp_data <= 32'h00A21000;
-                16'h0268 : rd_rsp_data <= 32'h00A21000;
-                16'h026C : rd_rsp_data <= 32'h00A21000;
-                16'h0270 : rd_rsp_data <= 32'h00A21000;
-                16'h0274 : rd_rsp_data <= 32'h00A21000;
-                16'h0278 : rd_rsp_data <= 32'h00A21000;
-                16'h027C : rd_rsp_data <= 32'h00A21000;
-                16'h0280 : rd_rsp_data <= 32'h00A21000;
-                16'h0284 : rd_rsp_data <= 32'h00A21000;
-                16'h0288 : rd_rsp_data <= 32'h00A21000;
-                16'h028C : rd_rsp_data <= 32'h00A21000;
-                16'h0290 : rd_rsp_data <= 32'h00A21000;
-                16'h0294 : rd_rsp_data <= 32'h00A21000;
-                16'h0298 : rd_rsp_data <= 32'h00A21000;
-                16'h029C : rd_rsp_data <= 32'h00A21000;
-                16'h02A0 : rd_rsp_data <= 32'h00A21000;
-                16'h02A4 : rd_rsp_data <= 32'h00A21000;
-                16'h02A8 : rd_rsp_data <= 32'h00A21000;
-                16'h02AC : rd_rsp_data <= 32'h0029B000;
-                16'h02B0 : rd_rsp_data <= 32'h0029C000;
-                16'h02B4 : rd_rsp_data <= 32'h00010000;
-                16'h02B8 : rd_rsp_data <= 32'h00010000;
-                16'h02BC : rd_rsp_data <= 32'h00010000;
-                16'h02C0 : rd_rsp_data <= 32'h00010000;
-                16'h02C4 : rd_rsp_data <= 32'h00010000;
-                16'h02C8 : rd_rsp_data <= 32'h00010000;
-                16'h02CC : rd_rsp_data <= 32'h00010000;
-                16'h02D0 : rd_rsp_data <= 32'h00010000;
-                16'h02D4 : rd_rsp_data <= 32'h00010000;
-                16'h02D8 : rd_rsp_data <= 32'h00010000;
-                16'h02DC : rd_rsp_data <= 32'h00010000;
-                16'h02E0 : rd_rsp_data <= 32'h00010000;
-                16'h02E4 : rd_rsp_data <= 32'h00010000;
-                16'h02E8 : rd_rsp_data <= 32'h00010000;
-                16'h02EC : rd_rsp_data <= 32'h00010000;
-                16'h02F0 : rd_rsp_data <= 32'h00010000;
-                16'h02F4 : rd_rsp_data <= 32'h00010000;
-                16'h02F8 : rd_rsp_data <= 32'h00010000;
-                16'h02FC : rd_rsp_data <= 32'h00010000;
-                16'h0300 : rd_rsp_data <= 32'h00010000;
-                16'h0304 : rd_rsp_data <= 32'h00010000;
-                16'h0308 : rd_rsp_data <= 32'h00010000;
-                16'h030C : rd_rsp_data <= 32'h00010000;
-                16'h0310 : rd_rsp_data <= 32'h00010000;
-                16'h0314 : rd_rsp_data <= 32'h00010000;
-                16'h0318 : rd_rsp_data <= 32'h00010000;
-                16'h031C : rd_rsp_data <= 32'h00010000;
-                16'h0320 : rd_rsp_data <= 32'h00010000;
-                16'h0324 : rd_rsp_data <= 32'h00010000;
-                16'h0328 : rd_rsp_data <= 32'h00010000;
-                16'h032C : rd_rsp_data <= 32'h00010000;
-                16'h0330 : rd_rsp_data <= 32'h00010000;
-                16'h0334 : rd_rsp_data <= 32'h00010000;
-                16'h0338 : rd_rsp_data <= 32'h00010000;
-                16'h033C : rd_rsp_data <= 32'h00010000;
-                16'h0340 : rd_rsp_data <= 32'h00010000;
-                16'h0344 : rd_rsp_data <= 32'h00010000;
-                16'h0348 : rd_rsp_data <= 32'h00010000;
-                16'h034C : rd_rsp_data <= 32'h00010000;
-                16'h0350 : rd_rsp_data <= 32'h00010000;
-                16'h0354 : rd_rsp_data <= 32'h00010000;
-                16'h0358 : rd_rsp_data <= 32'h00010000;
-                16'h035C : rd_rsp_data <= 32'h00010000;
-                16'h0360 : rd_rsp_data <= 32'h00010000;
-                16'h0364 : rd_rsp_data <= 32'h00010000;
-                16'h0368 : rd_rsp_data <= 32'h00010000;
-                16'h036C : rd_rsp_data <= 32'h00010000;
-                16'h0370 : rd_rsp_data <= 32'h00010000;
-                16'h0374 : rd_rsp_data <= 32'h00010000;
-                16'h0378 : rd_rsp_data <= 32'h00010000;
-                16'h037C : rd_rsp_data <= 32'h00010000;
-                16'h0380 : rd_rsp_data <= 32'h00010000;
-                16'h0384 : rd_rsp_data <= 32'h00010000;
-                16'h0388 : rd_rsp_data <= 32'h00010000;
-                16'h038C : rd_rsp_data <= 32'h00010000;
-                16'h0390 : rd_rsp_data <= 32'h00010000;
-                16'h0394 : rd_rsp_data <= 32'h00010000;
-                16'h0398 : rd_rsp_data <= 32'h00010000;
-                16'h039C : rd_rsp_data <= 32'h00010000;
-                16'h03A0 : rd_rsp_data <= 32'h00010000;
-                16'h03A4 : rd_rsp_data <= 32'h00010000;
-                16'h03A8 : rd_rsp_data <= 32'h00010000;
-                16'h03AC : rd_rsp_data <= 32'h00010000;
-                16'h03B0 : rd_rsp_data <= 32'h00010000;
-                16'h03B4 : rd_rsp_data <= 32'h00010000;
-                16'h03B8 : rd_rsp_data <= 32'h00010000;
-                16'h03BC : rd_rsp_data <= 32'h00010000;
-                16'h03C0 : rd_rsp_data <= 32'h00010000;
-                16'h03C4 : rd_rsp_data <= 32'h00010000;
-                16'h03C8 : rd_rsp_data <= 32'h00010000;
-                16'h03CC : rd_rsp_data <= 32'h00010000;
-                16'h03D0 : rd_rsp_data <= 32'h00010000;
-                16'h03D4 : rd_rsp_data <= 32'h00010000;
-                16'h03D8 : rd_rsp_data <= 32'h00010000;
-                16'h03DC : rd_rsp_data <= 32'h00010000;
-                16'h03E0 : rd_rsp_data <= 32'h00010000;
-                16'h03E4 : rd_rsp_data <= 32'h00A21000;
-                16'h03E8 : rd_rsp_data <= 32'h00A21000;
-                16'h03EC : rd_rsp_data <= 32'h00A21000;
-                16'h03F0 : rd_rsp_data <= 32'h00A21000;
-                16'h03F4 : rd_rsp_data <= 32'h00A21000;
-                16'h03F8 : rd_rsp_data <= 32'h00A21000;
-                16'h03FC : rd_rsp_data <= 32'h00A21000;
-                16'h0400 : rd_rsp_data <= 32'h00A21000;
-                default: begin
-                    random_number <= {random_number[30:0], random_number[31] ^ random_number[21] ^ random_number[1] ^ random_number[0]};
-                    rd_rsp_data <= random_number;
-                end
-            endcase
-        end else if (dwr_valid) begin
-            case (({dwr_addr[31:24], dwr_addr[23:16], dwr_addr[15:08], dwr_addr[07:00]} - (base_address_register & 32'hFFFFFFF0)) & 32'hFFFF)
-                //No need to write bar;
-            endcase
-        end else begin
-            rd_rsp_data[7:0]   <= ((0 + (number) % (15 + 1 - 0)) << 4) | (0 + (number + 3) % (15 + 1 - 0));
-            rd_rsp_data[15:8]  <= ((0 + (number + 6) % (15 + 1 - 0)) << 4) | (0 + (number + 9) % (15 + 1 - 0));
-            rd_rsp_data[23:16] <= ((0 + (number + 12) % (15 + 1 - 0)) << 4) | (0 + (number + 15) % (15 + 1 - 0));
-            rd_rsp_data[31:24] <= ((0 + (number) % (15 + 1 - 0)) << 4) | (0 + (number + 3) % (15 + 1 - 0));
-        end
-        // number <= (stop) ? number : number + 1'b1;
-        number <= (stop) ? number : {number[30:0], number[31] ^ number[21] ^ number[1] ^ number[0]};
-    end
+    endfunction
 
-    bit[31:0] int_start_cnt = 0;
+    bit [87:0]  drd_req_ctx;
+    bit         drd_req_valid;
+    bit [31:0]  drd_req_addr;
+
+    bit         dwr_valid;
+    bit [31:0]  dwr_addr;
+    bit [31:0]  dwr_data;
+    bit [3:0]   dwr_be;
+
+    bit [31:0]  reg_intms;
+    bit [31:0]  reg_cc;
+    bit [31:0]  reg_csts;
+    bit [31:0]  reg_aqa;
+    bit [63:0]  reg_asq;
+    bit [63:0]  reg_acq;
+    bit [15:0]  sq0_tail;
+    bit [15:0]  cq0_head;
+    bit         irq_pending;
+
+    wire [31:0] rd_off = (drd_req_addr - (base_address_register & 32'hfffffff0));
+    wire [31:0] wr_off = (dwr_addr - (base_address_register & 32'hfffffff0));
+
+    wire        adminq_cfg_valid = (reg_aqa[11:0] != 12'h000) && (reg_aqa[27:16] != 12'h000) &&
+                                   (reg_asq != 64'h0000000000000000) && (reg_acq != 64'h0000000000000000);
+
+    // Minimal CAP: MQES=0x3f, CQR=1, TO=0x10, DSTRD=0, MPSMIN=0, MPSMAX=0.
+    localparam [31:0] NVME_CAP_LO = 32'h0010007f;
+    localparam [31:0] NVME_CAP_HI = 32'h00000001; // CSS bit0 (NVM cmd set)
+
     always @ (posedge clk) begin
         if (rst) begin
-            int_start_cnt <= 0;
-        end else if (int_start_cnt <= 32'd500000000)begin
-            int_start_cnt <= int_start_cnt + 1'b1;
+            reg_intms      <= 32'h00000000;
+            reg_cc         <= 32'h00000000;
+            reg_csts       <= 32'h00000000;
+            reg_aqa        <= 32'h00000000;
+            reg_asq        <= 64'h0000000000000000;
+            reg_acq        <= 64'h0000000000000000;
+            sq0_tail       <= 16'h0000;
+            cq0_head       <= 16'h0000;
+            irq_pending    <= 1'b0;
+        end else begin
+            // CSTS.RDY follows CC.EN and queue config for a more realistic bring-up.
+            reg_csts[0] <= reg_cc[0] & adminq_cfg_valid;
+
+            if (dwr_valid) begin
+                case (wr_off[15:0])
+                    16'h000c: reg_intms <= reg_intms | dwr_data;                              // INTMS set bits
+                    16'h0010: begin                                                            // INTMC clear bits
+                        reg_intms   <= reg_intms & ~dwr_data;
+                        irq_pending <= irq_pending & |(reg_intms & ~dwr_data);
+                    end
+                    16'h0014: reg_cc <= be_merge32(reg_cc, dwr_data, dwr_be);                 // CC
+                    16'h0024: reg_aqa <= be_merge32(reg_aqa, dwr_data, dwr_be);               // AQA
+                    16'h0028: reg_asq[31:0] <= be_merge32(reg_asq[31:0], dwr_data, dwr_be);   // ASQ low
+                    16'h002c: reg_asq[63:32] <= be_merge32(reg_asq[63:32], dwr_data, dwr_be); // ASQ high
+                    16'h0030: reg_acq[31:0] <= be_merge32(reg_acq[31:0], dwr_data, dwr_be);   // ACQ low
+                    16'h0034: reg_acq[63:32] <= be_merge32(reg_acq[63:32], dwr_data, dwr_be); // ACQ high
+                    16'h1000: begin                                                            // SQ0TDBL
+                        sq0_tail    <= be_merge32({16'h0000, sq0_tail}, dwr_data, dwr_be)[15:0];
+                        if (reg_csts[0]) begin
+                            cq0_head    <= cq0_head + 16'h0001;
+                            irq_pending <= 1'b1;
+                        end
+                    end
+                    16'h1004: begin                                                            // CQ0HDBL
+                        cq0_head <= be_merge32({16'h0000, cq0_head}, dwr_data, dwr_be)[15:0];
+                        if (be_merge32({16'h0000, cq0_head}, dwr_data, dwr_be)[15:0] == sq0_tail)
+                            irq_pending <= 1'b0;
+                    end
+                    default: begin end
+                endcase
+            end
+        end
+
+        drd_req_ctx   <= rd_req_ctx;
+        drd_req_valid <= rd_req_valid;
+        drd_req_addr  <= rd_req_addr;
+        dwr_valid     <= wr_valid;
+        dwr_addr      <= wr_addr;
+        dwr_data      <= wr_data;
+        dwr_be        <= wr_be;
+
+        rd_rsp_ctx    <= drd_req_ctx;
+        rd_rsp_valid  <= drd_req_valid;
+
+        if (drd_req_valid) begin
+            case (rd_off[15:0])
+                16'h0000: rd_rsp_data <= NVME_CAP_LO;
+                16'h0004: rd_rsp_data <= NVME_CAP_HI;
+                16'h0008: rd_rsp_data <= 32'h00010300;          // VS 1.3.0
+                16'h000c: rd_rsp_data <= reg_intms;             // INTMS
+                16'h0010: rd_rsp_data <= 32'h00000000;          // INTMC write-only
+                16'h0014: rd_rsp_data <= reg_cc;                // CC
+                16'h001c: rd_rsp_data <= reg_csts;              // CSTS
+                16'h0024: rd_rsp_data <= reg_aqa;               // AQA
+                16'h0028: rd_rsp_data <= reg_asq[31:0];         // ASQ low
+                16'h002c: rd_rsp_data <= reg_asq[63:32];        // ASQ high
+                16'h0030: rd_rsp_data <= reg_acq[31:0];         // ACQ low
+                16'h0034: rd_rsp_data <= reg_acq[63:32];        // ACQ high
+                16'h1000: rd_rsp_data <= {16'h0000, sq0_tail};  // SQ0TDBL
+                16'h1004: rd_rsp_data <= {16'h0000, cq0_head};  // CQ0HDBL
+                default:  rd_rsp_data <= 32'h00000000;
+            endcase
+        end else begin
+            rd_rsp_data <= 32'h00000000;
         end
     end
-    assign int_enable = int_start_cnt >= 32'd500000000;
-    // assign int_enable = 0;
+
+    assign int_enable = reg_csts[0] & irq_pending & ~reg_intms[0];
 endmodule
+
+
